@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
+  title: 'LearnFlow AI - Intelligent Learning Platform',
+  description: 'AI-powered learning platform with smart study plans, interactive quizzes, and personalized recommendations',
   generator: 'v0.app',
   icons: {
     icon: [
