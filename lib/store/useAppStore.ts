@@ -10,6 +10,28 @@ interface User {
   name: string;
   email: string;
   avatar?: string;
+  studyStreak?: number;
+}
+
+interface Document {
+  id: string;
+  name: string;
+  type: string;
+  subject: string;
+  uploadedAt: string;
+  tags?: string[];
+}
+
+interface StudyTask {
+  title: string;
+  duration?: string;
+  priority?: "high" | "medium" | "low";
+}
+
+interface StudyPlan {
+  id: string;
+  name: string;
+  tasks: StudyTask[];
 }
 
 interface OnboardingData {
@@ -84,6 +106,11 @@ interface AppState {
   // Quiz state
   quizResults: QuizResult[];
 
+  // Page state
+  activePage: string;
+  documents: Document[];
+  studyPlan: StudyPlan | null;
+
   // Loading states
   isLoading: boolean;
   loadingMessage: string;
@@ -120,6 +147,11 @@ interface AppState {
 
   setLoading: (isLoading: boolean, message?: string) => void;
 
+  // Page actions
+  setActivePage: (page: string) => void;
+  fetchDashboardData: () => void;
+  fetchDocuments: () => void;
+
   // Reset state
   resetStore: () => void;
 }
@@ -149,6 +181,9 @@ const initialState = {
     },
   ],
   quizResults: [],
+  activePage: "dashboard",
+  documents: [],
+  studyPlan: null,
   isLoading: false,
   loadingMessage: "",
 };
@@ -287,6 +322,39 @@ export const useAppStore = create<AppState>()(
       // Loading actions
       setLoading: (isLoading, message = "") =>
         set({ isLoading, loadingMessage: message }),
+
+      // Page actions
+      setActivePage: (page) => set({ activePage: page }),
+
+      fetchDashboardData: () => {
+        // Simulate fetching dashboard data
+        set({
+          studyPlan: {
+            id: "1",
+            name: "Today's Study Plan",
+            tasks: [
+              { title: "Review Organic Chemistry", duration: "1 hr", priority: "high" },
+              { title: "Practice PYQ - Physics", duration: "45 min", priority: "medium" },
+              { title: "Read Chapter 6 - Maths", duration: "30 min", priority: "low" },
+              { title: "Biology Quick Revision", duration: "20 min", priority: "medium" },
+            ],
+          },
+        });
+      },
+
+      fetchDocuments: () => {
+        // Simulate fetching documents
+        set({
+          documents: [
+            { id: "1", name: "Physics Notes - Thermodynamics", type: "notes", subject: "Physics", uploadedAt: "2024-03-01", tags: ["thermodynamics", "heat"] },
+            { id: "2", name: "Chemistry Syllabus 2024", type: "syllabus", subject: "Chemistry", uploadedAt: "2024-02-28", tags: ["syllabus"] },
+            { id: "3", name: "Mathematics PYQ 2023", type: "pyq", subject: "Mathematics", uploadedAt: "2024-02-25", tags: ["calculus", "algebra"] },
+            { id: "4", name: "Biology Quiz - Cell Structure", type: "quiz", subject: "Biology", uploadedAt: "2024-02-20", tags: ["cells"] },
+            { id: "5", name: "English Literature Notes", type: "notes", subject: "English", uploadedAt: "2024-02-18", tags: ["literature"] },
+            { id: "6", name: "Computer Science PYQ 2022", type: "pyq", subject: "Computer Science", uploadedAt: "2024-02-15", tags: ["algorithms"] },
+          ],
+        });
+      },
 
       // Reset
       resetStore: () => set(initialState),
