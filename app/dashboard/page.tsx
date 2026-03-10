@@ -23,11 +23,14 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import Link from "next/link";
 
 export default function DashboardPage() {
-  const { user, studyPlan, documents, fetchDashboardData, setActivePage } = useAppStore();
+  const user = useAppStore((state) => state.user);
+  const studyPlan = useAppStore((state) => state.studyPlan);
+  const fetchDashboardData = useAppStore((state) => state.fetchDashboardData);
+  const setActivePage = useAppStore((state) => state.setActivePage);
 
   useEffect(() => {
-    setActivePage("dashboard");
-    fetchDashboardData();
+    if (setActivePage) setActivePage("dashboard");
+    if (fetchDashboardData) fetchDashboardData();
   }, [fetchDashboardData, setActivePage]);
 
   const stats = [

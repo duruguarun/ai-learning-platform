@@ -38,14 +38,16 @@ import Link from "next/link";
 type ViewMode = "grid" | "list";
 
 export default function LibraryPage() {
-  const { documents, fetchDocuments, setActivePage } = useAppStore();
+  const documents = useAppStore((state) => state.documents);
+  const fetchDocuments = useAppStore((state) => state.fetchDocuments);
+  const setActivePage = useAppStore((state) => state.setActivePage);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
   useEffect(() => {
-    setActivePage("library");
-    fetchDocuments();
+    if (setActivePage) setActivePage("library");
+    if (fetchDocuments) fetchDocuments();
   }, [fetchDocuments, setActivePage]);
 
   const categories = [
