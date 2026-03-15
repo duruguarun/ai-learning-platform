@@ -9,7 +9,6 @@ import {
   Grid,
   List,
   Filter,
-  SortAsc,
   Download,
   Trash2,
   MoreVertical,
@@ -29,10 +28,8 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppStore } from "@/lib/store/useAppStore";
 import { Navbar } from "@/components/layout/Navbar";
-import { Sidebar } from "@/components/layout/Sidebar";
 import Link from "next/link";
 
 type ViewMode = "grid" | "list";
@@ -51,11 +48,11 @@ export default function LibraryPage() {
   }, [fetchDocuments, setActivePage]);
 
   const categories = [
-    { id: "all", label: "All Files", count: documents.length },
-    { id: "notes", label: "Notes", count: documents.filter((d) => d.type === "notes").length },
-    { id: "syllabus", label: "Syllabus", count: documents.filter((d) => d.type === "syllabus").length },
-    { id: "pyq", label: "PYQs", count: documents.filter((d) => d.type === "pyq").length },
-    { id: "quiz", label: "Quizzes", count: documents.filter((d) => d.type === "quiz").length },
+    { id: "all", label: "All" },
+    { id: "notes", label: "Notes" },
+    { id: "syllabus", label: "Syllabus" },
+    { id: "pyq", label: "PYQs" },
+    { id: "quiz", label: "Quizzes" },
   ];
 
   const filteredDocuments = documents.filter((doc) => {
@@ -90,40 +87,39 @@ export default function LibraryPage() {
     return new Date(date).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      year: "numeric",
     });
   };
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-6 lg:p-8 ml-0 lg:ml-64 mt-16">
+
+      <main className="px-4 pb-8 pt-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">Library</h1>
-                <p className="text-muted-foreground">
-                  Manage and organize your study materials
+                <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Library</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Manage your study materials
                 </p>
               </div>
               <Link href="/workspace">
-                <Button className="gap-2">
+                <Button className="w-full gap-2 sm:w-auto">
                   <Plus className="h-4 w-4" /> Upload New
                 </Button>
               </Link>
             </div>
 
             {/* Search and Filters */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search files..."
                   value={searchQuery}
@@ -134,8 +130,9 @@ export default function LibraryPage() {
               <div className="flex gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="gap-2">
-                      <Filter className="h-4 w-4" /> Filter
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Filter className="h-4 w-4" />
+                      <span className="hidden sm:inline">Filter</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -144,25 +141,12 @@ export default function LibraryPage() {
                     <DropdownMenuItem>By Type</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="gap-2">
-                      <SortAsc className="h-4 w-4" /> Sort
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>Name (A-Z)</DropdownMenuItem>
-                    <DropdownMenuItem>Name (Z-A)</DropdownMenuItem>
-                    <DropdownMenuItem>Date (Newest)</DropdownMenuItem>
-                    <DropdownMenuItem>Date (Oldest)</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <div className="flex border border-border rounded-lg overflow-hidden">
+                <div className="flex overflow-hidden rounded-lg border border-border">
                   <Button
                     variant={viewMode === "grid" ? "secondary" : "ghost"}
                     size="icon"
                     onClick={() => setViewMode("grid")}
-                    className="rounded-none"
+                    className="h-9 w-9 rounded-none"
                   >
                     <Grid className="h-4 w-4" />
                   </Button>
@@ -170,7 +154,7 @@ export default function LibraryPage() {
                     variant={viewMode === "list" ? "secondary" : "ghost"}
                     size="icon"
                     onClick={() => setViewMode("list")}
-                    className="rounded-none"
+                    className="h-9 w-9 rounded-none"
                   >
                     <List className="h-4 w-4" />
                   </Button>
@@ -179,9 +163,11 @@ export default function LibraryPage() {
             </div>
 
             {/* Folders Section */}
-            <div className="mb-8">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Folders</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="mb-6">
+              <h2 className="mb-3 text-sm font-semibold text-foreground sm:mb-4 sm:text-base">
+                Folders
+              </h2>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
                 {folders.map((folder, index) => (
                   <motion.div
                     key={folder.name}
@@ -189,15 +175,17 @@ export default function LibraryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                   >
-                    <Card className="border-border/50 hover:border-primary/30 hover:shadow-md transition-all cursor-pointer">
-                      <CardContent className="p-4">
+                    <Card className="cursor-pointer border-border/50 transition-all hover:border-foreground/20 hover:shadow-md">
+                      <CardContent className="p-3 sm:p-4">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${folder.color}/10`}>
-                            <Folder className={`h-5 w-5 ${folder.color.replace("bg-", "text-")}`} />
+                          <div className={`rounded-lg p-2 ${folder.color}/10`}>
+                            <Folder className={`h-4 w-4 sm:h-5 sm:w-5 ${folder.color.replace("bg-", "text-")}`} />
                           </div>
-                          <div>
-                            <p className="font-medium text-foreground">{folder.name}</p>
-                            <p className="text-sm text-muted-foreground">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {folder.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
                               {folder.count} files
                             </p>
                           </div>
@@ -209,184 +197,184 @@ export default function LibraryPage() {
               </div>
             </div>
 
-            {/* Files Section */}
-            <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-              <TabsList className="mb-4">
-                {categories.map((cat) => (
-                  <TabsTrigger key={cat.id} value={cat.id} className="gap-2">
-                    {cat.label}
-                    <Badge variant="secondary" className="text-xs">
-                      {cat.count}
-                    </Badge>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+            {/* Category Tabs */}
+            <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
+              {categories.map((cat) => (
+                <Button
+                  key={cat.id}
+                  variant={selectedCategory === cat.id ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className="shrink-0"
+                >
+                  {cat.label}
+                </Button>
+              ))}
+            </div>
 
-              <TabsContent value={selectedCategory}>
-                <AnimatePresence mode="wait">
-                  {viewMode === "grid" ? (
+            {/* Files Section */}
+            <AnimatePresence mode="wait">
+              {viewMode === "grid" ? (
+                <motion.div
+                  key="grid"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
+                >
+                  {filteredDocuments.map((doc, index) => (
                     <motion.div
-                      key="grid"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                      key={doc.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
                     >
-                      {filteredDocuments.map((doc, index) => (
-                        <motion.div
-                          key={doc.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: index * 0.05 }}
-                        >
-                          <Card className="border-border/50 hover:border-primary/30 hover:shadow-md transition-all group">
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="p-3 rounded-lg bg-muted/50">
-                                  {getFileIcon(doc.type)}
-                                </div>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem>
-                                      <Eye className="h-4 w-4 mr-2" /> View
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                      <Download className="h-4 w-4 mr-2" /> Download
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem className="text-destructive">
-                                      <Trash2 className="h-4 w-4 mr-2" /> Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                              <h3 className="font-medium text-foreground mb-1 truncate">
-                                {doc.name}
-                              </h3>
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                                <Clock className="h-3 w-3" />
-                                {formatDate(doc.uploadedAt)}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="secondary" className="text-xs">
-                                  {doc.subject}
-                                </Badge>
-                                {doc.tags?.slice(0, 1).map((tag) => (
-                                  <Badge key={tag} variant="outline" className="text-xs">
-                                    <Tag className="h-3 w-3 mr-1" />
-                                    {tag}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="list"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                    >
-                      <Card className="border-border/50">
-                        <CardContent className="p-0">
-                          <div className="divide-y divide-border">
-                            {filteredDocuments.map((doc, index) => (
-                              <motion.div
-                                key={doc.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ duration: 0.3, delay: index * 0.05 }}
-                                className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors group"
-                              >
-                                <div className="flex items-center gap-4">
-                                  <div className="p-2 rounded-lg bg-muted/50">
-                                    {getFileIcon(doc.type)}
-                                  </div>
-                                  <div>
-                                    <h3 className="font-medium text-foreground">
-                                      {doc.name}
-                                    </h3>
-                                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                                      <span>{doc.subject}</span>
-                                      <span>-</span>
-                                      <span>{formatDate(doc.uploadedAt)}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="secondary" className="text-xs">
-                                    {doc.type}
-                                  </Badge>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                      >
-                                        <MoreVertical className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem>
-                                        <Eye className="h-4 w-4 mr-2" /> View
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem>
-                                        <Download className="h-4 w-4 mr-2" /> Download
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem className="text-destructive">
-                                        <Trash2 className="h-4 w-4 mr-2" /> Delete
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
-                              </motion.div>
+                      <Card className="group border-border/50 transition-all hover:border-foreground/20 hover:shadow-md">
+                        <CardContent className="p-4">
+                          <div className="mb-3 flex items-start justify-between">
+                            <div className="rounded-lg bg-muted/50 p-3">
+                              {getFileIcon(doc.type)}
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                  <Eye className="mr-2 h-4 w-4" /> View
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Download className="mr-2 h-4 w-4" /> Download
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive">
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          <h3 className="mb-1 truncate text-sm font-medium text-foreground">
+                            {doc.name}
+                          </h3>
+                          <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            {formatDate(doc.uploadedAt)}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge variant="secondary" className="text-xs">
+                              {doc.subject}
+                            </Badge>
+                            {doc.tags?.slice(0, 1).map((tag) => (
+                              <Badge key={tag} variant="outline" className="text-xs">
+                                <Tag className="mr-1 h-3 w-3" />
+                                {tag}
+                              </Badge>
                             ))}
                           </div>
                         </CardContent>
                       </Card>
                     </motion.div>
-                  )}
-                </AnimatePresence>
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="list"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <Card className="border-border/50">
+                    <CardContent className="p-0">
+                      <div className="divide-y divide-border">
+                        {filteredDocuments.map((doc, index) => (
+                          <motion.div
+                            key={doc.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.05 }}
+                            className="group flex items-center justify-between p-3 transition-colors hover:bg-muted/30 sm:p-4"
+                          >
+                            <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+                              <div className="shrink-0 rounded-lg bg-muted/50 p-2">
+                                {getFileIcon(doc.type)}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h3 className="truncate text-sm font-medium text-foreground">
+                                  {doc.name}
+                                </h3>
+                                <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>{doc.subject}</span>
+                                  <span className="hidden sm:inline">-</span>
+                                  <span className="hidden sm:inline">{formatDate(doc.uploadedAt)}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              <Badge variant="secondary" className="hidden text-xs sm:inline-flex">
+                                {doc.type}
+                              </Badge>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem>
+                                    <Eye className="mr-2 h-4 w-4" /> View
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    <Download className="mr-2 h-4 w-4" /> Download
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                {filteredDocuments.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="p-4 rounded-full bg-muted/50 mb-4">
-                      <FileText className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-medium text-foreground mb-2">
-                      No files found
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {searchQuery
-                        ? "Try adjusting your search query"
-                        : "Upload your first document to get started"}
-                    </p>
-                    <Link href="/workspace">
-                      <Button className="gap-2">
-                        <Plus className="h-4 w-4" /> Upload File
-                      </Button>
-                    </Link>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
+            {filteredDocuments.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="mb-4 rounded-full bg-muted/50 p-4">
+                  <FileText className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="mb-2 text-lg font-medium text-foreground">
+                  No files found
+                </h3>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  {searchQuery
+                    ? "Try adjusting your search query"
+                    : "Upload your first document to get started"}
+                </p>
+                <Link href="/workspace">
+                  <Button className="gap-2">
+                    <Plus className="h-4 w-4" /> Upload File
+                  </Button>
+                </Link>
+              </div>
+            )}
           </motion.div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

@@ -14,6 +14,12 @@ import {
   LayoutDashboard,
   Library,
   Home,
+  Lightbulb,
+  FileSearch,
+  FileText,
+  Calendar,
+  HelpCircle,
+  PlayCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +31,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAppStore } from "@/lib/store/useAppStore";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const navLinks = [
   { href: "/features", label: "Features", icon: Home },
@@ -32,13 +45,24 @@ const navLinks = [
   { href: "/library", label: "Library", icon: Library },
 ];
 
+const featureItems = [
+  { id: "concept", label: "Explain Concepts", icon: Lightbulb },
+  { id: "pyq", label: "Analyze PYQ", icon: FileSearch },
+  { id: "syllabus", label: "Upload Syllabus", icon: FileText },
+  { id: "studyplan", label: "Study Plan", icon: Calendar },
+  { id: "quiz", label: "Practice Quiz", icon: HelpCircle },
+  { id: "simulation", label: "Simulation", icon: PlayCircle },
+];
+
 export function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, isAuthenticated, logout } = useAppStore();
+  const user = useAppStore((state) => state.user);
+  const isAuthenticated = useAppStore((state) => state.isAuthenticated);
+  const logout = useAppStore((state) => state.logout);
 
   const handleLogout = () => {
-    logout();
+    if (logout) logout();
     window.location.href = "/";
   };
 
@@ -47,24 +71,93 @@ export function Navbar() {
   if (hideNavbar) return null;
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Logo */}
-        <Link href="/features" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <BookOpen className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span className="text-xl font-bold">LearnAI</span>
-        </Link>
+    <nav className="fixed top-0 left-0 right-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-14 items-center justify-between px-4 md:px-6">
+        {/* Left side - Logo and Mobile Menu */}
+        <div className="flex items-center gap-3">
+          {/* Mobile Menu Sheet */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="lg:hidden">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 p-0">
+              <SheetHeader className="border-b border-border p-4">
+                <SheetTitle className="flex items-center gap-2 text-left">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground">
+                    <BookOpen className="h-4 w-4 text-background" />
+                  </div>
+                  <span className="font-bold">LearnFlow AI</span>
+                </SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col p-4">
+                <div className="space-y-1">
+                  <p className="px-2 text-xs font-semibold uppercase text-muted-foreground">
+                    Navigation
+                  </p>
+                  {navLinks.map((link) => {
+                    const isActive = pathname === link.href;
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Button
+                          variant={isActive ? "secondary" : "ghost"}
+                          className="w-full justify-start gap-3"
+                        >
+                          <link.icon className="h-4 w-4" />
+                          {link.label}
+                        </Button>
+                      </Link>
+                    );
+                  })}
+                </div>
+                
+                <div className="my-4 border-t border-border" />
+                
+                <div className="space-y-1">
+                  <p className="px-2 text-xs font-semibold uppercase text-muted-foreground">
+                    AI Features
+                  </p>
+                  {featureItems.map((item) => (
+                    <Link
+                      key={item.id}
+                      href={`/workspace?feature=${item.id}`}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Button variant="ghost" className="w-full justify-start gap-3">
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                      </Button>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
 
-        {/* Desktop Navigation */}
-        <div className="hidden items-center gap-1 md:flex">
+          {/* Logo */}
+          <Link href="/features" className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground">
+              <BookOpen className="h-4 w-4 text-background" />
+            </div>
+            <span className="hidden text-lg font-bold sm:inline-block">LearnFlow AI</span>
+          </Link>
+        </div>
+
+        {/* Center - Desktop Navigation */}
+        <div className="hidden items-center gap-1 lg:flex">
           {navLinks.map((link) => {
             const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
             return (
               <Link key={link.href} href={link.href}>
                 <Button
                   variant={isActive ? "secondary" : "ghost"}
+                  size="sm"
                   className="gap-2"
                 >
                   <link.icon className="h-4 w-4" />
@@ -76,14 +169,14 @@ export function Navbar() {
         </div>
 
         {/* Right Side - User Menu */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           {isAuthenticated && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                  <Avatar className="h-9 w-9">
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {user.name.charAt(0).toUpperCase()}
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-foreground text-background text-sm">
+                      {user.name?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -91,8 +184,8 @@ export function Navbar() {
               <DropdownMenuContent align="end" className="w-56">
                 <div className="flex items-center gap-2 p-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {user.name.charAt(0).toUpperCase()}
+                    <AvatarFallback className="bg-foreground text-background">
+                      {user.name?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
@@ -126,57 +219,14 @@ export function Navbar() {
             </DropdownMenu>
           ) : (
             <Link href="/login">
-              <Button variant="ghost" size="sm">
-                <User className="mr-2 h-4 w-4" />
-                Sign In
+              <Button size="sm" className="gap-2">
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline">Sign In</span>
               </Button>
             </Link>
           )}
-
-          {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
         </div>
       </div>
-
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="border-t border-border md:hidden"
-          >
-            <div className="space-y-1 px-4 py-3">
-              {navLinks.map((link) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className="w-full justify-start gap-2"
-                    >
-                      <link.icon className="h-4 w-4" />
-                      {link.label}
-                    </Button>
-                  </Link>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </nav>
   );
 }

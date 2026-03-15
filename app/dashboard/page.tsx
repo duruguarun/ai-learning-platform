@@ -19,7 +19,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useAppStore } from "@/lib/store/useAppStore";
 import { Navbar } from "@/components/layout/Navbar";
-import { Sidebar } from "@/components/layout/Sidebar";
 import Link from "next/link";
 
 export default function DashboardPage() {
@@ -36,7 +35,7 @@ export default function DashboardPage() {
   const stats = [
     {
       title: "Study Streak",
-      value: user?.studyStreak || 0,
+      value: user?.studyStreak || 7,
       unit: "days",
       icon: Zap,
       color: "text-amber-500",
@@ -102,26 +101,26 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-6 lg:p-8 ml-0 lg:ml-64 mt-16">
+      
+      <main className="px-4 pb-8 pt-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
             {/* Welcome Section */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-foreground mb-2">
+            <div className="mb-6 sm:mb-8">
+              <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
                 Welcome back, {user?.name || "Student"}
               </h1>
-              <p className="text-muted-foreground">
-                {"Here's"} your learning progress for today. Keep up the great work!
+              <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+                {"Here's"} your learning progress for today
               </p>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:mb-8 sm:gap-4 lg:grid-cols-4">
               {stats.map((stat, index) => (
                 <motion.div
                   key={stat.title}
@@ -129,19 +128,19 @@ export default function DashboardPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                 >
-                  <Card className="border-border/50 hover:border-primary/30 transition-colors">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className={`p-3 rounded-xl ${stat.bg}`}>
-                          <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                  <Card className="border-border/50">
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex items-center justify-between mb-3 sm:mb-4">
+                        <div className={`p-2 sm:p-3 rounded-xl ${stat.bg}`}>
+                          <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color}`} />
                         </div>
-                        <TrendingUp className="h-4 w-4 text-emerald-500" />
+                        <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-500" />
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">{stat.title}</p>
-                        <p className="text-2xl font-bold text-foreground">
+                      <div className="space-y-0.5 sm:space-y-1">
+                        <p className="text-xs text-muted-foreground sm:text-sm">{stat.title}</p>
+                        <p className="text-xl font-bold text-foreground sm:text-2xl">
                           {stat.value}
-                          <span className="text-sm font-normal text-muted-foreground ml-1">
+                          <span className="ml-1 text-xs font-normal text-muted-foreground sm:text-sm">
                             {stat.unit}
                           </span>
                         </p>
@@ -152,7 +151,8 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Content Grid */}
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
               {/* Today's Study Plan */}
               <motion.div
                 className="lg:col-span-2"
@@ -161,26 +161,26 @@ export default function DashboardPage() {
                 transition={{ duration: 0.5, delay: 0.4 }}
               >
                 <Card className="border-border/50">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <Calendar className="h-5 w-5 text-primary" />
+                  <CardHeader className="flex flex-row items-center justify-between pb-2 sm:pb-4">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold sm:text-lg">
+                      <Calendar className="h-4 w-4 text-foreground sm:h-5 sm:w-5" />
                       {"Today's"} Study Plan
                     </CardTitle>
                     <Link href="/workspace">
-                      <Button variant="ghost" size="sm" className="text-primary">
-                        View All <ChevronRight className="h-4 w-4 ml-1" />
+                      <Button variant="ghost" size="sm" className="h-8 text-xs sm:text-sm">
+                        View All <ChevronRight className="ml-1 h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                     </Link>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-3 sm:space-y-4">
                     {upcomingTasks.map((task, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                        className="flex items-center justify-between rounded-lg bg-muted/30 p-3 sm:p-4"
                       >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3 sm:gap-4">
                           <div
-                            className={`h-2 w-2 rounded-full ${
+                            className={`h-2 w-2 shrink-0 rounded-full ${
                               task.priority === "high"
                                 ? "bg-red-500"
                                 : task.priority === "medium"
@@ -188,15 +188,18 @@ export default function DashboardPage() {
                                   : "bg-emerald-500"
                             }`}
                           />
-                          <div>
-                            <p className="font-medium text-foreground">{task.title}</p>
-                            <p className="text-sm text-muted-foreground">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-foreground sm:text-base">
+                              {task.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground sm:text-sm">
                               {task.duration || "30 min"}
                             </p>
                           </div>
                         </div>
-                        <Button size="sm" variant="outline" className="gap-2">
-                          <Play className="h-4 w-4" /> Start
+                        <Button size="sm" variant="outline" className="h-8 shrink-0 gap-1.5 text-xs sm:gap-2 sm:text-sm">
+                          <Play className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline">Start</span>
                         </Button>
                       </div>
                     ))}
@@ -211,16 +214,16 @@ export default function DashboardPage() {
                 transition={{ duration: 0.5, delay: 0.5 }}
               >
                 <Card className="border-border/50">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-primary" />
+                  <CardHeader className="pb-2 sm:pb-4">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold sm:text-lg">
+                      <Clock className="h-4 w-4 text-foreground sm:h-5 sm:w-5" />
                       Recent Activity
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-3 sm:space-y-4">
                     {recentActivities.map((activity, index) => (
                       <div key={index} className="flex items-start gap-3">
-                        <div className="p-2 rounded-lg bg-muted/50">
+                        <div className="shrink-0 rounded-lg bg-muted/50 p-2">
                           {activity.type === "quiz" && (
                             <Brain className="h-4 w-4 text-violet-500" />
                           )}
@@ -234,14 +237,14 @@ export default function DashboardPage() {
                             <Calendar className="h-4 w-4 text-amber-500" />
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-medium text-foreground sm:text-sm">
                             {activity.title}
                           </p>
                           <p className="text-xs text-muted-foreground">{activity.time}</p>
                         </div>
                         {activity.score && (
-                          <span className="text-sm font-medium text-emerald-500">
+                          <span className="shrink-0 text-xs font-medium text-emerald-500 sm:text-sm">
                             {activity.score}
                           </span>
                         )}
@@ -254,34 +257,34 @@ export default function DashboardPage() {
 
             {/* Subject Progress */}
             <motion.div
-              className="mt-6"
+              className="mt-4 sm:mt-6"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.6 }}
             >
               <Card className="border-border/50">
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <Target className="h-5 w-5 text-primary" />
+                <CardHeader className="pb-2 sm:pb-4">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold sm:text-lg">
+                    <Target className="h-4 w-4 text-foreground sm:h-5 sm:w-5" />
                     Subject Progress
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
                     {[
-                      { name: "Physics", progress: 72, color: "bg-blue-500" },
-                      { name: "Chemistry", progress: 58, color: "bg-emerald-500" },
-                      { name: "Mathematics", progress: 85, color: "bg-violet-500" },
-                      { name: "Biology", progress: 45, color: "bg-amber-500" },
-                      { name: "English", progress: 90, color: "bg-rose-500" },
-                      { name: "Computer Science", progress: 65, color: "bg-cyan-500" },
+                      { name: "Physics", progress: 72 },
+                      { name: "Chemistry", progress: 58 },
+                      { name: "Mathematics", progress: 85 },
+                      { name: "Biology", progress: 45 },
+                      { name: "English", progress: 90 },
+                      { name: "Computer Science", progress: 65 },
                     ].map((subject) => (
                       <div key={subject.name} className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-foreground">
+                          <span className="text-xs font-medium text-foreground sm:text-sm">
                             {subject.name}
                           </span>
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-xs text-muted-foreground sm:text-sm">
                             {subject.progress}%
                           </span>
                         </div>
@@ -295,28 +298,30 @@ export default function DashboardPage() {
 
             {/* Quick Actions */}
             <motion.div
-              className="mt-6"
+              className="mt-4 sm:mt-6"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.7 }}
             >
-              <Card className="border-border/50 bg-gradient-to-r from-primary/5 to-violet-500/5">
-                <CardContent className="p-6">
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <Card className="border-border/50 bg-muted/30">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                     <div>
-                      <h3 className="text-lg font-semibold text-foreground mb-1">
+                      <h3 className="text-base font-semibold text-foreground sm:text-lg">
                         Ready to continue learning?
                       </h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
                         Pick up where you left off or explore new features
                       </p>
                     </div>
-                    <div className="flex gap-3">
-                      <Link href="/features">
-                        <Button variant="outline">Explore Features</Button>
+                    <div className="flex w-full gap-3 sm:w-auto">
+                      <Link href="/features" className="flex-1 sm:flex-none">
+                        <Button variant="outline" className="w-full text-xs sm:text-sm">
+                          Explore Features
+                        </Button>
                       </Link>
-                      <Link href="/workspace">
-                        <Button>Continue Learning</Button>
+                      <Link href="/workspace" className="flex-1 sm:flex-none">
+                        <Button className="w-full text-xs sm:text-sm">Continue Learning</Button>
                       </Link>
                     </div>
                   </div>
@@ -324,8 +329,8 @@ export default function DashboardPage() {
               </Card>
             </motion.div>
           </motion.div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
