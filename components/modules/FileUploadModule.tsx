@@ -11,7 +11,7 @@ import { useAppStore } from "@/lib/store/useAppStore";
 import { uploadAPI } from "@/lib/services/api";
 
 interface FileUploadModuleProps {
-  onUploadComplete?: (fileData: UploadedFileData) => void;
+  onUploadComplete?: (fileData: UploadedFileData, file?: File) => void;
   acceptedTypes?: string[];
   maxSize?: number; // in MB
   title?: string;
@@ -123,7 +123,7 @@ export function FileUploadModule({
 
         setUploadedFile(fileData);
         addUploadedFile(fileData);
-        onUploadComplete?.(fileData);
+        onUploadComplete?.(fileData, file);
       } catch {
         clearInterval(progressInterval);
         setError("Upload failed. Please try again.");

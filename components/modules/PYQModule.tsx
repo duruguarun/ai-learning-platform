@@ -10,23 +10,28 @@ import { Button } from "@/components/ui/button";
 import { FileUploadModule } from "./FileUploadModule";
 import { useAppStore } from "@/lib/store/useAppStore";
 import { pyqAPI } from "@/lib/services/api";
-import { mockPYQAnalysis } from "@/lib/mock/mockData";
 
 export function PYQModule() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState<typeof mockPYQAnalysis | null>(null);
+  const [loaderMessage, setLoaderMessage] = useState<string>('Analyzing question papers...');
+  const [analysis, setAnalysis] = useState<any | null>(null);
+  // store both truncated display and full text for each agent step
+  const [agentOutputs, setAgentOutputs] = useState<{display:string; full:string;}[]>([]);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedFileId, setUploadedFileId] = useState<string | null>(null);
 
   const { addGeneratedContent, addWorkflowStep } = useAppStore();
 
-  const handleFileUpload = async (fileData: { id: string; name: string }) => {
+  const handleFileUpload = async (fileData: { id: string; name: string }, file?: File) => {
     setUploadedFileId(fileData.id);
+    setUploadedFile(file || null);
   };
 
   const handleAnalyze = async () => {
-    if (!uploadedFileId) return;
+    if (!uploadedFile) return;
 
     setIsAnalyzing(true);
+    setLoaderMessage('Uploading file and preparing agents...');
 
     // Add workflow step
     addWorkflowStep({
@@ -37,9 +42,29 @@ export function PYQModule() {
     });
 
     try {
-      const response = await pyqAPI.analyzePYQ(uploadedFileId);
+      // once the request starts, switch message to indicate agents have taken over
+      setLoaderMessage('Running AI agents...');
+      const response = await pyqAPI.analyzePYQ(uploadedFile);
       
       if (response.success) {
+        // sequentially reveal agent outputs like chat heartbeats
+        const outputs = response.data.agentOutputs || [];
+        for (let i = 0; i < outputs.length; i++) {
+          // try to stringify whatever the agent returned
+          const raw = outputs[i].output;
+          const fullText = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);
+          let msgBody = fullText;
+          // truncate long outputs for loader display
+          if (msgBody.length > 200) {
+            msgBody = msgBody.slice(0, 200) + '...';
+          }
+          const stepMsg = `Step ${i + 1}: ${msgBody}`;
+          setLoaderMessage(stepMsg);
+          setAgentOutputs((prev) => [...prev, { display: stepMsg, full: fullText }]);
+          // pause briefly so user can read each step
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+
         setAnalysis(response.data);
         
         addGeneratedContent({
@@ -53,6 +78,7 @@ export function PYQModule() {
       console.error("Failed to analyze PYQ:", error);
     } finally {
       setIsAnalyzing(false);
+      setLoaderMessage('Analyzing question papers...');
     }
   };
 
@@ -130,12 +156,27 @@ export function PYQModule() {
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-          <p className="mt-4 text-muted-foreground">
-            Analyzing question papers...
+          <p className="mt-4 text-muted-foreground max-w-prose text-center whitespace-pre-wrap">
+            {loaderMessage}
           </p>
           <p className="text-sm text-muted-foreground">
             This may take a few moments
           </p>
+          {agentOutputs.length > 0 && (
+            <div className="mt-4 w-full max-w-md space-y-1">
+              {agentOutputs.map((item, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: idx * 0.2 }}
+                  className="text-xs text-muted-foreground italic animate-pulse"
+                >
+                  {item.display}
+                </motion.div>
+              ))}
+            </div>
+          )}
         </motion.div>
       )}
 
@@ -150,11 +191,20 @@ export function PYQModule() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                Analysis Complete
+                {analysis.isPartial ? (
+                  <AlertCircle className="h-5 w-5 text-orange-600" />
+                ) : (
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                )}
+                {analysis.isPartial ? 'Analysis Partially Complete' : 'Analysis Complete'}
               </CardTitle>
               <CardDescription>
-                Analyzed {analysis.totalQuestions} questions from {analysis.yearsCovered.join(", ")}
+                Analyzed {analysis.papers_analysed || 1} paper(s) • {analysis.totalQuestions} questions
+                {analysis.isPartial && (
+                  <span className="block text-orange-600 mt-1">
+                    {analysis.partialMessage}
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -164,12 +214,12 @@ export function PYQModule() {
                   <p className="text-2xl font-bold">{analysis.totalQuestions}</p>
                 </div>
                 <div className="rounded-lg bg-muted p-4">
-                  <p className="text-sm text-muted-foreground">Years Covered</p>
-                  <p className="text-2xl font-bold">{analysis.yearsCovered.length}</p>
+                  <p className="text-sm text-muted-foreground">Papers Analyzed</p>
+                  <p className="text-2xl font-bold">{analysis.papers_analysed || 1}</p>
                 </div>
                 <div className="rounded-lg bg-muted p-4">
-                  <p className="text-sm text-muted-foreground">Difficulty</p>
-                  <p className="text-2xl font-bold">{analysis.examPattern.averageDifficulty}</p>
+                  <p className="text-sm text-muted-foreground">Top Topics</p>
+                  <p className="text-2xl font-bold">{analysis.importantTopics?.length || 0}</p>
                 </div>
               </div>
             </CardContent>
@@ -180,7 +230,7 @@ export function PYQModule() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
-                Important Topics by Frequency
+                Important Topics by Probability
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -204,10 +254,10 @@ export function PYQModule() {
                         </Badge>
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        {topic.frequency} questions ({topic.percentage}%)
+                        {topic.frequency} questions ({topic.percentage.toFixed(1)}%)
                       </span>
                     </div>
-                    <Progress value={topic.percentage * 2} className="h-2" />
+                    <Progress value={topic.percentage} className="h-2" />
                   </motion.div>
                 ))}
               </div>
@@ -218,30 +268,103 @@ export function PYQModule() {
           <Card>
             <CardHeader>
               <CardTitle>Exam Pattern Breakdown</CardTitle>
+              <CardDescription>{analysis.paper_pattern?.pattern_summary}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 mb-4">
                 <div className="flex flex-col items-center rounded-lg border border-border p-4">
                   <div className="text-3xl font-bold text-primary">
-                    {analysis.examPattern.mcqPercentage}%
+                    {analysis.paper_pattern?.total_marks || analysis.totalQuestions}
                   </div>
-                  <p className="text-sm text-muted-foreground">MCQ Questions</p>
+                  <p className="text-sm text-muted-foreground">Total Marks</p>
                 </div>
                 <div className="flex flex-col items-center rounded-lg border border-border p-4">
                   <div className="text-3xl font-bold text-primary">
-                    {analysis.examPattern.numericalPercentage}%
+                    {analysis.paper_pattern?.total_questions || analysis.totalQuestions}
                   </div>
-                  <p className="text-sm text-muted-foreground">Numerical</p>
-                </div>
-                <div className="flex flex-col items-center rounded-lg border border-border p-4">
-                  <div className="text-3xl font-bold text-primary">
-                    {analysis.examPattern.theoryPercentage}%
-                  </div>
-                  <p className="text-sm text-muted-foreground">Theory</p>
+                  <p className="text-sm text-muted-foreground">Total Questions</p>
                 </div>
               </div>
+              {analysis.paper_pattern?.sections && (
+                <div className="space-y-2">
+                  <h4 className="font-medium">Sections:</h4>
+                  {analysis.paper_pattern.sections.map((section: any, index: number) => (
+                    <div key={index} className="flex justify-between text-sm">
+                      <span>{section.name}</span>
+                      <span>{section.questions} questions × {section.marks_per_q} marks = {section.total_marks} marks</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {analysis.paper_pattern?.common_question_types && (
+                <div className="mt-4">
+                  <h4 className="font-medium">Question Types:</h4>
+                  <div className="flex gap-2 mt-2">
+                    {analysis.paper_pattern.common_question_types.map((type: string, index: number) => (
+                      <Badge key={index} variant="secondary">{type}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Frequent Questions */}
+          {analysis.frequent_questions && analysis.frequent_questions.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-blue-500" />
+                  Frequently Asked Questions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  {analysis.frequent_questions.map((q: any, index: number) => (
+                    <motion.li
+                      key={index}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="flex items-start gap-3 p-3 bg-muted rounded-lg"
+                    >
+                      <div className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{q.question}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Appeared {q.frequency} times in {q.years_appeared.join(", ")}
+                        </p>
+                      </div>
+                    </motion.li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Raw Insights (if partial) */}
+          {analysis.isPartial && analysis.rawInsights && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-orange-500" />
+                  Raw Analysis Insights
+                </CardTitle>
+                <CardDescription>
+                  Unprocessed output from the AI analysis pipeline
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-muted p-4 rounded-lg">
+                  <pre className="whitespace-pre-wrap text-sm text-muted-foreground">
+                    {analysis.rawInsights}
+                  </pre>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Recommendations */}
           <Card>
@@ -252,22 +375,30 @@ export function PYQModule() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-3">
-                {analysis.recommendations.map((rec, index) => (
-                  <motion.li
-                    key={index}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="flex items-start gap-3"
-                  >
-                    <div className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-                      {index + 1}
-                    </div>
-                    <span className="text-muted-foreground">{rec}</span>
-                  </motion.li>
-                ))}
-              </ul>
+              <div className="space-y-4">
+                {analysis.important_topics_summary && (
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-sm font-medium mb-1">Summary:</p>
+                    <p className="text-sm text-muted-foreground">{analysis.important_topics_summary}</p>
+                  </div>
+                )}
+                <ul className="space-y-3">
+                  {analysis.recommendations?.map((rec, index) => (
+                    <motion.li
+                      key={index}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="flex items-start gap-3"
+                    >
+                      <div className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+                        {index + 1}
+                      </div>
+                      <span className="text-muted-foreground">{rec}</span>
+                    </motion.li>
+                  ))}
+                </ul>
+              </div>
             </CardContent>
           </Card>
 
@@ -277,7 +408,9 @@ export function PYQModule() {
               variant="outline"
               onClick={() => {
                 setAnalysis(null);
+                setAgentOutputs([]);
                 setUploadedFileId(null);
+                setUploadedFile(null);
               }}
             >
               Analyze Another
