@@ -97,11 +97,68 @@ export const conceptAPI = {
 
 // PYQ Analysis
 export const pyqAPI = {
-  analyzePYQ: async (_fileId: string) => {
-    await delay(3000);
+  analyzePYQ: async (file: File) => {
+    // Send to exam-analyser API
+    const formData = new FormData();
+    formData.append('files', file);
+
+    const response = await fetch('http://localhost:8000/analyse', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to analyze PYQ');
+    }
+
+    const data = await response.json();
+
+    // Handle responses gracefully - treat any missing data as partial
+    const hasRequiredData = data.paper_pattern && data.frequent_questions && data.ranked_topics;
+    const isPartial = data.status === 'partial' || !hasRequiredData;
+
+    // For partial responses, provide defaults and show raw insights
+    const transformedData = {
+      documentName: file.name,
+      totalQuestions: data.paper_pattern?.total_questions || 0,
+      yearsCovered: Array.isArray(data.frequent_questions)
+        ? data.frequent_questions
+            .map((q: any) => q.years_appeared)
+            .flat()
+            .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
+        : [],
+      importantTopics: Array.isArray(data.ranked_topics)
+        ? data.ranked_topics.map((topic: any) => ({
+            topic: topic.topic || 'Unknown',
+            frequency: topic.frequency || 0,
+            importance: (topic.probability_percent || 0) > 80 ? 'high' : (topic.probability_percent || 0) > 60 ? 'medium' : 'low',
+            percentage: data.paper_pattern?.total_questions
+              ? ((topic.frequency || 0) / data.paper_pattern.total_questions) * 100
+              : 0,
+          }))
+        : [],
+      examPattern: {
+        mcqPercentage: data.paper_pattern?.common_question_types?.includes('MCQ') ? 60 : 0,
+        numericalPercentage: data.paper_pattern?.common_question_types?.includes('Numerical') ? 25 : 0,
+        theoryPercentage: (data.paper_pattern?.common_question_types?.includes('Essay') ||
+                          data.paper_pattern?.common_question_types?.includes('Short Answer')) ? 15 : 0,
+        averageDifficulty: 'Medium',
+      },
+      recommendations: [
+        data.important_topics_summary || 'No summary available',
+        ...(Array.isArray(data.frequent_questions) && data.frequent_questions.length > 0
+          ? data.frequent_questions.slice(0, 3).map((q: any) => `Practice: ${q.question || 'Unknown question'}`)
+          : []),
+      ],
+      agentOutputs: Array.isArray(data.agent_outputs) ? data.agent_outputs : [],
+      isPartial,
+      partialMessage: isPartial ? data.message || 'Analysis completed but some data could not be processed.' : null,
+      rawInsights: isPartial ? data.raw_insights : null,
+    };
+
     return {
       success: true,
-      data: mockPYQAnalysis,
+      data: transformedData,
     };
   },
 
@@ -228,6 +285,55 @@ export const chatAPI = {
   },
 };
 
+// Animation Generator
+export const animationAPI = {
+  // Start a new animation job, returns job_id immediately
+  generate: async (topic: string): Promise<{ job_id: string; status: string; topic: string }> => {
+    const response = await fetch("http://localhost:8001/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic }),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: "Unknown error" }));
+      throw new Error(err.detail || "Failed to start animation job");
+    }
+    return response.json();
+  },
+
+  // Poll job status
+  getStatus: async (jobId: string): Promise<{
+    job_id: string;
+    status: "queued" | "generating" | "rendering" | "done" | "error";
+    topic: string;
+    video_url: string | null;
+    error: string | null;
+    code: string | null;
+  }> => {
+    const response = await fetch(`http://localhost:8001/status/${jobId}`);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: "Unknown error" }));
+      throw new Error(err.detail || "Failed to get job status");
+    }
+    return response.json();
+  },
+
+  // Get the full video URL (for <video> src)
+  getVideoUrl: (jobId: string): string => {
+    return `http://localhost:8001/video/${jobId}`;
+  },
+
+  // Health check
+  health: async (): Promise<boolean> => {
+    try {
+      const r = await fetch("http://localhost:8001/health", { signal: AbortSignal.timeout(3000) });
+      return r.ok;
+    } catch {
+      return false;
+    }
+  },
+};
+
 // Dashboard & Analytics
 export const dashboardAPI = {
   getProgress: async (_userId: string) => {
@@ -270,6 +376,7 @@ export const api = {
   quiz: quizAPI,
   chat: chatAPI,
   dashboard: dashboardAPI,
+  animation: animationAPI,
 };
 
 export default api;

@@ -8,3 +8,20 @@ node_modules/
 .next/
 .env*.local
 .DS_Store
+
+#  env files
+.env
+.env.local
+
+#virtual  environment files
+.venv/
+venv/
+
+# media 
+media
+outputs
+uploads
+
+# python ignore files 
+__pycache__/
+*.pyc

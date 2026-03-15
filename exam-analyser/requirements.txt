@@ -1,0 +1,20 @@
+# Core framework
+fastapi
+uvicorn[standard]
+
+# CrewAI + Ollama integration
+crewai
+crewai-tools
+langchain-ollama
+langchain-community
+litellm
+
+# PDF parsing
+pdfplumber
+pymupdf
+python-multipart
+
+# Utilities
+pydantic
+python-dotenv
+aiofiles
