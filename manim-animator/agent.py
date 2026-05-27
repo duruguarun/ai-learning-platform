@@ -1,12 +1,20 @@
 """
 Manim Animation Agent
 ---------------------
-LangGraph pipeline:  generate_code → run_manim → [retry ≤2] → done
+LangGraph pipeline: generate_code -> run_manim -> [retry <= 2] -> done
 """
 
-import os, re, sys, subprocess, tempfile, shutil
+import os
+import re
+import sys
+import ast
+import json
+import shutil
+import tempfile
+import subprocess
 from pathlib import Path
-from typing import TypedDict, Optional
+from typing import Optional, TypedDict
+
 from langgraph.graph import StateGraph, END
 from llm import get_llm
 
@@ -117,7 +125,7 @@ STEP 3 — REQUIRED VIDEO STRUCTURE (total ~60 seconds)
 
 Scene 1 — Title card  (6 sec)
   - Large Text of topic name centered, smaller subtitle below
-  - Write(title) → FadeIn(subtitle) → wait(3) → FadeOut both
+  - Write(title) -> FadeIn(subtitle) -> wait(3) -> FadeOut both
 
 Scene 2 — What is it?  (12 sec)
   - One line definition text at top
@@ -148,10 +156,12 @@ STRICT TECHNICAL RULES — EVERY RULE MUST BE FOLLOWED:
 2. Only one import: from manim import *
 3. NEVER use MathTex() or Tex() — use Text() for everything
 4. NEVER use self.clear() — use self.play(FadeOut(obj1), FadeOut(obj2)) instead
-5. ALL objects must stay within: x in [-6, 6],  y in [-3.5, 3.5]
+5. ALL objects must stay within: x in [-6, 6], y in [-3.5, 3.5]
 6. At least 60% of scenes must have animated shapes moving or changing
 7. Total runtime ~60 seconds using self.wait() calls
-8. Return ONLY raw Python code — no markdown fences, no explanations
+8. Return ONLY valid JSON in this exact shape:
+{{"code":"<complete python code here>"}}
+No markdown fences. No explanations.
 
 Now write the complete Manim script for topic: {topic}
 """
@@ -171,115 +181,296 @@ Fix rules:
 - Only use Text(), never MathTex() or Tex()
 - Do NOT use self.clear()
 - Keep all objects within x: -6..6, y: -3.5..3.5
-- Return ONLY the fixed Python code, no markdown fences
+- Return ONLY valid JSON in this exact shape:
+{{"code":"<complete fixed python code here>"}}
+- No markdown fences
+- No explanations
 """
 
 
-# ── State ────────────────────────────────────────────────────────────────────────
+# ── State ──────────────────────────────────────────────────────────────────────
 class State(TypedDict):
-    topic:      str
-    code:       str
+    topic: str
+    code: str
     video_path: Optional[str]
-    error:      Optional[str]
-    attempts:   int
+    error: Optional[str]
+    attempts: int
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────────
-def _strip_fences(text: str) -> str:
-    text = text.strip()
-    text = re.sub(r"^```(?:python)?\s*\n?", "", text)
-    text = re.sub(r"\n?\s*```\s*$", "", text)
-    return text.strip()
-
+# ── Helpers ────────────────────────────────────────────────────────────────────
 def _find_mp4(search_dir: str) -> Optional[str]:
-    for root, _d, files in os.walk(search_dir):
-        for f in files:
-            if f.endswith(".mp4"):
-                return os.path.join(root, f)
+    for root, _dirs, files in os.walk(search_dir):
+        for file_name in files:
+            if file_name.endswith(".mp4"):
+                return os.path.join(root, file_name)
     return None
 
-def _safe_del(path):
-    try: os.unlink(path)
-    except: pass
+
+def _safe_del(path: str) -> None:
+    try:
+        os.unlink(path)
+    except Exception:
+        pass
 
 
-# ── Node 1: generate code ─────────────────────────────────────────────────────────
+def _extract_code_from_response(raw_response) -> str:
+    text = getattr(raw_response, "content", raw_response)
+
+    if isinstance(text, list):
+        parts = []
+        for item in text:
+            if isinstance(item, dict):
+                parts.append(item.get("text", str(item)))
+            else:
+                parts.append(str(item))
+        text = "\n".join(parts)
+
+    if not isinstance(text, str):
+        text = str(text or "")
+
+    text = text.strip()
+
+    # Try JSON first
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict) and isinstance(data.get("code"), str):
+            return data["code"].strip()
+    except Exception:
+        pass
+
+    # Remove markdown fences if any
+    text = re.sub(r"^```(?:python)?\s*\n?", "", text)
+    text = re.sub(r"\n?\s*```\s*$", "", text)
+
+    # Try to find actual Python code start
+    lines = text.splitlines()
+    start_index = None
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("from manim import") or stripped.startswith("class "):
+            start_index = i
+            break
+
+    if start_index is not None:
+        text = "\n".join(lines[start_index:]).strip()
+
+    return text.strip()
+
+
+def _validate_python(code: str) -> tuple[bool, Optional[str]]:
+    if not code.strip():
+        return False, "Empty code returned by model."
+
+    try:
+        ast.parse(code)
+        return True, None
+    except SyntaxError as exc:
+        return False, f"SyntaxError: {exc}"
+
+
+def _ensure_required_structure(code: str) -> tuple[bool, Optional[str]]:
+    if "from manim import *" not in code:
+        return False, "Missing required import: from manim import *"
+
+    if "class ExplainerScene" not in code:
+        return False, "Missing required class: ExplainerScene"
+
+    return True, None
+
+
+# ── Node 1: generate code ─────────────────────────────────────────────────────
 def generate_code(state: State) -> State:
     llm = get_llm()
-    if state["attempts"] > 0 and state["error"] and state["code"]:
-        prompt = FIX_PROMPT.format(error=state["error"], code=state["code"])
-        print(f"[agent] attempt {state['attempts']+1}: fixing error...")
-    else:
-        prompt = GENERATE_PROMPT.format(topic=state["topic"])
-        print(f"[agent] attempt 1: generating code for '{state['topic']}'...")
 
-    code = _strip_fences(get_llm().invoke(prompt).content)
+    try:
+        if state["attempts"] > 0 and state["error"] and state["code"]:
+            prompt = FIX_PROMPT.format(error=state["error"], code=state["code"])
+            print(f"[agent] attempt {state['attempts'] + 1}: fixing error...")
+        else:
+            prompt = GENERATE_PROMPT.format(topic=state["topic"])
+            print(f"[agent] attempt 1: generating code for '{state['topic']}'...")
+    except Exception as exc:
+        return {
+            **state,
+            "code": state.get("code", ""),
+            "video_path": None,
+            "error": f"Prompt formatting failed: {exc}",
+            "attempts": state["attempts"] + 1,
+        }
+
+    response = llm.invoke(
+        prompt,
+        response_format={"type": "json_object"},
+    )
+
+    code = _extract_code_from_response(response)
+
+    ok, err = _validate_python(code)
+    if not ok:
+        print(f"[agent] python validation failed: {err}")
+        return {
+            **state,
+            "code": code,
+            "error": err,
+            "video_path": None,
+            "attempts": state["attempts"] + 1,
+        }
+
+    ok, err = _ensure_required_structure(code)
+    if not ok:
+        print(f"[agent] structure validation failed: {err}")
+        return {
+            **state,
+            "code": code,
+            "error": err,
+            "video_path": None,
+            "attempts": state["attempts"] + 1,
+        }
+
     print(f"[agent] code length: {len(code)} chars")
-    return {**state, "code": code, "error": None}
+    return {
+        **state,
+        "code": code,
+        "error": None,
+    }
 
 
-# ── Node 2: run manim ─────────────────────────────────────────────────────────────
+# ── Node 2: run manim ─────────────────────────────────────────────────────────
 def run_manim(state: State) -> State:
     attempts = state["attempts"]
-    tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False,
-                                     prefix="manim_", encoding="utf-8")
-    tmp.write(state["code"]); tmp.close()
+
+    if not state["code"].strip():
+        return {
+            **state,
+            "video_path": None,
+            "error": "No code available to render.",
+            "attempts": attempts + 1,
+        }
+
+    tmp = tempfile.NamedTemporaryFile(
+        mode="w",
+        suffix=".py",
+        delete=False,
+        prefix="manim_",
+        encoding="utf-8",
+    )
+    tmp.write(state["code"])
+    tmp.close()
+
     media_dir = os.path.join(os.path.dirname(tmp.name), "manim_media")
 
-    cmd = [sys.executable, "-m", "manim", "-ql",
-           "--media_dir", media_dir, tmp.name, "ExplainerScene"]
+    cmd = [
+        sys.executable,
+        "-m",
+        "manim",
+        "-ql",
+        "--media_dir",
+        media_dir,
+        tmp.name,
+        "ExplainerScene",
+    ]
     print(f"[agent] running: {' '.join(cmd)}")
 
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        print(f"[agent] exit code: {r.returncode}")
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        print(f"[agent] exit code: {result.returncode}")
 
-        if r.returncode != 0:
-            err = (r.stderr or r.stdout or "no output")[-3000:]
+        if result.returncode != 0:
+            err = ((result.stderr or "") + "\n" + (result.stdout or "")).strip()
+            err = err[-4000:] or "no output"
             _safe_del(tmp.name)
-            return {**state, "video_path": None, "error": err, "attempts": attempts+1}
+            shutil.rmtree(media_dir, ignore_errors=True)
+            return {
+                **state,
+                "video_path": None,
+                "error": err,
+                "attempts": attempts + 1,
+            }
 
-        mp4 = _find_mp4(media_dir)
-        if not mp4:
-            _safe_del(tmp.name); shutil.rmtree(media_dir, ignore_errors=True)
-            return {**state, "video_path": None,
-                    "error": "Manim ran OK but no .mp4 produced.", "attempts": attempts+1}
+        mp4_path = _find_mp4(media_dir)
+        if not mp4_path:
+            _safe_del(tmp.name)
+            shutil.rmtree(media_dir, ignore_errors=True)
+            return {
+                **state,
+                "video_path": None,
+                "error": "Manim ran successfully but no .mp4 file was produced.",
+                "attempts": attempts + 1,
+            }
 
-        safe = re.sub(r"[^a-zA-Z0-9_]", "_", state["topic"])[:40]
-        dest = str(OUTPUT_DIR / f"{safe}_v{attempts}.mp4")
-        shutil.copy2(mp4, dest)
-        print(f"[agent] saved → {dest}")
+        safe_topic = re.sub(r"[^a-zA-Z0-9_]", "_", state["topic"])[:40]
+        dest = str(OUTPUT_DIR / f"{safe_topic}_v{attempts}.mp4")
+        shutil.copy2(mp4_path, dest)
+        print(f"[agent] saved -> {dest}")
 
-        _safe_del(tmp.name); shutil.rmtree(media_dir, ignore_errors=True)
-        return {**state, "video_path": dest, "error": None}
+        _safe_del(tmp.name)
+        shutil.rmtree(media_dir, ignore_errors=True)
+
+        return {
+            **state,
+            "video_path": dest,
+            "error": None,
+        }
 
     except subprocess.TimeoutExpired:
         _safe_del(tmp.name)
-        return {**state, "video_path": None,
-                "error": "Render timed out (>5 min).", "attempts": attempts+1}
-    except Exception as e:
+        shutil.rmtree(media_dir, ignore_errors=True)
+        return {
+            **state,
+            "video_path": None,
+            "error": "Render timed out (>5 min).",
+            "attempts": attempts + 1,
+        }
+    except Exception as exc:
         _safe_del(tmp.name)
-        return {**state, "video_path": None, "error": str(e), "attempts": attempts+1}
+        shutil.rmtree(media_dir, ignore_errors=True)
+        return {
+            **state,
+            "video_path": None,
+            "error": str(exc),
+            "attempts": attempts + 1,
+        }
 
 
-# ── Router ────────────────────────────────────────────────────────────────────────
+# ── Router ─────────────────────────────────────────────────────────────────────
 def route(state: State) -> str:
-    if state.get("video_path"): return "done"
-    if state["attempts"] < 2:   return "retry"
+    if state.get("video_path"):
+        return "done"
+    if state["attempts"] < 2:
+        return "retry"
     return "done"
 
 
-# ── Build agent ───────────────────────────────────────────────────────────────────
+# ── Build agent ────────────────────────────────────────────────────────────────
 def build_agent():
-    g = StateGraph(State)
-    g.add_node("generate_code", generate_code)
-    g.add_node("run_manim",     run_manim)
-    g.set_entry_point("generate_code")
-    g.add_edge("generate_code", "run_manim")
-    g.add_conditional_edges("run_manim", route, {"retry": "generate_code", "done": END})
-    return g.compile()
+    graph = StateGraph(State)
+    graph.add_node("generate_code", generate_code)
+    graph.add_node("run_manim", run_manim)
+    graph.set_entry_point("generate_code")
+    graph.add_edge("generate_code", "run_manim")
+    graph.add_conditional_edges(
+        "run_manim",
+        route,
+        {
+            "retry": "generate_code",
+            "done": END,
+        },
+    )
+    return graph.compile()
+
 
 def run_animation(topic: str) -> dict:
     return build_agent().invoke(
-        {"topic": topic, "code": "", "video_path": None, "error": None, "attempts": 0}
+        {
+            "topic": topic,
+            "code": "",
+            "video_path": None,
+            "error": None,
+            "attempts": 0,
+        }
     )

@@ -7,7 +7,7 @@ from crewai import Agent, LLM
 
 def get_llm():
     return LLM(
-        model="ollama/mistral",
+        model="ollama/ministral-3:8b-cloud",
         base_url="http://localhost:11434",
         temperature=0.2,
     )
